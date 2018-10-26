@@ -45,12 +45,11 @@ class HiRezAPIException(Exception):
     def __init__(self, message):
         super().__init__(message)
 
-
 class HiRezAPISession:
     def __init__(self):
         if not HaveInternet():
             raise HiRezAPIException("No internet connection available.")
-        self.cacheAllResponses = True
+        self.cacheAllResponses = False
         self.reqBase = "http://api.smitegame.com/smiteapi.svc/"
         self.utilFilePath = os.path.join("C:\\", "ProgramData", "HiRezAPISession")
         os.makedirs(self.utilFilePath, exist_ok=True)
@@ -109,9 +108,11 @@ class HiRezAPISession:
         for arg in args:
             tempName += str(arg)
         tempName += ".json"
-        if os.path.exists(os.path.join(self.utilFilePath,tempName)):
+        if os.path.exists(os.path.join(self.utilFilePath,tempName)) and self.cacheAllResponses:
             log.debug("Found cached request, returning...")
             return json.loads(TextFileToString(os.path.join(self.utilFilePath,tempName)))
+        if os.path.exists(os.path.join(self.utilFilePath, tempName)) and not self.cacheAllResponses:
+            log.debug("Found cached request but cacheAllResponses is false, ignoring...")
         toReturn = None
         callBase = "http://api.smitegame.com/smiteapi.svc/" + args[0] + "Json/" + self.devID + "/" + \
         self.__Signature(args[0]) + "/" + self.sessionID + "/" + Time()
@@ -127,19 +128,9 @@ class HiRezAPISession:
         toReturn = urllib.request.urlopen(callBase).read()
         temp = json.loads(toReturn.decode())
         if self.cacheAllResponses and args[0] != "testsession":
+            log.debug("Caching request '{}'...".format(tempName))
             StringToTextFile(os.path.join(self.utilFilePath,tempName),json.dumps(temp, indent=4))
         return temp
 
     def Status(self):
         return self.APICall("getdataused")
-
-
-
-
-
-
-
-
-
-
-
